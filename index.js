@@ -44,17 +44,20 @@ module.exports = function(options,processFn,done){
 
 
     // errLog
-    var failedStream = fs.createWriteStream('failed.log','a+')
+    var failedStream = fs.createWriteStream('failed.log',{flags:'a+'})
     // fixedLog
-    var fixedStream = fs.createWriteStream('fixed.log','a+')
+    var fixedStream = fs.createWriteStream('fixed.log',{flags:'a+'})
     // nextLog - this log gets renamed into place then all of the source files are deleted
     var nextLogName = sourceLog+'.tmp_'+jobKey;
     var nextLog = fs.createWriteStream(nextLogName)
 
-    var doingWork = workStream(processFn,boundWrite(failedStream),boundWrite(fixedStream),boundWrite(nextLog))
+    var doingWork = workStream(processFn,sourceLog+'.data_',boundWrite(failedStream),boundWrite(fixedStream),boundWrite(nextLog))
+
+    doingWork.maxAttempts = maxAttempts
 
     var processedFiles;
     doingWork.on('files',function(files){
+      console.log('got files: ',files)
       processedFiles = files
     })
 
@@ -79,17 +82,13 @@ module.exports = function(options,processFn,done){
           }
         })
       })
-
     })
+
+
 
   })
 }
 
-// 
-// foozoozabzab
-//
-
-// error.log, fixed.log,
 function workStream(handler,prefix,errLog,fixedLog,nextLog){
 
   var through = t2.obj(function(chunk,enc,cb){
@@ -106,9 +105,9 @@ function workStream(handler,prefix,errLog,fixedLog,nextLog){
       if(!o.tries) o.tries = 0 
       if(err) {
         if(!o.attempts) o.attempts = [];
-        o.attempts[o.tries].push({err:err+'',result:result})
+        o.attempts[o.tries] = {err:err+'',result:result}
 
-        if(++o.tries > maxAttempts) { 
+        if(++o.tries > through.maxAttempts) { 
           return errLog(o,function(err){
             cb(err)
           })
@@ -131,18 +130,23 @@ function workStream(handler,prefix,errLog,fixedLog,nextLog){
   var file = readmany(prefix+'*')
 
   file.on('files',function(files){
+    console.log('files>>> ',files)
     through.emit('files',files)
   })
 
   eos(split,function(err){
+    console.log('split ended')
     if(err) through.emit('error',err)
   })
 
   eos(file,function(err){
+    console.log('files ended')
     if(err) through.emit('error',err)
   })
 
   file.pipe(split).pipe(through)
+
+  through.maxAttempts = 3
 
   return through
 }
@@ -164,7 +168,9 @@ function maybeRename(file,toName,cb){
 }
 
 function boundWrite(s){
-  return s.write.bind(s)
+  return function(o,cb){
+    s.write(JSON.stringify(o)+"\n",cb)
+  }
 }
 
 function json(s){
