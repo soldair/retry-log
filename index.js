@@ -18,6 +18,7 @@ module.exports = function(options,processFn,done){
   // this process moves the target log file and sends a SIGHUP to the process with this pid 
   // so that it knows to get a new handle to it's log.
   var pid = options.pid
+  var rotateSignal = options.rotateSignal||'SIGHUP'
 
   // the log file path where new events are written
   var sourceLog = options.log
