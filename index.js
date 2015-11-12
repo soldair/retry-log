@@ -36,8 +36,9 @@ module.exports = function(options,processFn,done){
 
   maybeRename(sourceLog,compactName,function(err,renamed){
     if(err) return done(err)
-    // nothing to do.
-    if(!renamed) return done(false)
+
+    // i still have related logs i may need to process
+    //if(!renamed) return done(false)
 
     // tell any writing process to release the file.
     if(pid) process.kill(pid,"SIGHUP")
@@ -57,11 +58,17 @@ module.exports = function(options,processFn,done){
 
     var processedFiles;
     doingWork.on('files',function(files){
-      console.log('got files: ',files)
       processedFiles = files
     })
 
+    doingWork.on('end',function(){
+      console.log('doingWork end event called!')
+    })
+
     eos(doingWork,function(err){
+
+      console.log('done doing work!')
+
       if(err || !nextLog.bytesWritten) {
         return fs.unlink(nextLogName,function(){
           done(err)
@@ -72,10 +79,13 @@ module.exports = function(options,processFn,done){
       fs.rename(nextLogName,compactName+'_result',function(err){
         if(err) return done(err)
 
+        if(!processedFiles.length) return done()
+
         var cleanup = processedFiles.length
         var cleanupErrors = []
-        while(processFiles.length) fs.unlink(processedFiles.shift(),function(err){
+        while(processedFiles.length) fs.unlink(processedFiles.shift(),function(err){
           if(err) cleanupErrors.push(err)
+          console.log('unlink cleanup! ',cleanup)
           if(!--cleanup) {
             if(cleanupErrors.length) err = new Error('failed to cleanup all files! going to be reprocessing forever!')
             done(err)
@@ -84,12 +94,13 @@ module.exports = function(options,processFn,done){
       })
     })
 
-
-
   })
 }
 
 function workStream(handler,prefix,errLog,fixedLog,nextLog){
+
+
+  var maxAttempts = 3;
 
   var through = t2.obj(function(chunk,enc,cb){
     var o = json(chunk)
@@ -102,16 +113,24 @@ function workStream(handler,prefix,errLog,fixedLog,nextLog){
     }
 
     handler(o,function(err,result){
+      console.log('handler callback')
       if(!o.tries) o.tries = 0 
+
       if(err) {
+
+        console.log("GOT ERROR IN HANDLER CALLBACK")
+
         if(!o.attempts) o.attempts = [];
         o.attempts[o.tries] = {err:err+'',result:result}
+        console.log('current tries! ',o.tries,maxAttempts)
 
-        if(++o.tries > through.maxAttempts) { 
+        if(++o.tries >= maxAttempts) { 
+          console.log("putting in error log!")
           return errLog(o,function(err){
             cb(err)
           })
         } else {
+          console.log('putting in next log!')
           return nextLog(o,function(err){
             cb(err)
           })
@@ -130,7 +149,6 @@ function workStream(handler,prefix,errLog,fixedLog,nextLog){
   var file = readmany(prefix+'*')
 
   file.on('files',function(files){
-    console.log('files>>> ',files)
     through.emit('files',files)
   })
 
@@ -146,7 +164,12 @@ function workStream(handler,prefix,errLog,fixedLog,nextLog){
 
   file.pipe(split).pipe(through)
 
-  through.maxAttempts = 3
+  through.maxAttempts = function(v){
+    if(v !== undefined) maxAttempts = +v
+    return maxAttempts
+  }
+
+  through.on('data',function(){})
 
   return through
 }
@@ -155,7 +178,7 @@ function workStream(handler,prefix,errLog,fixedLog,nextLog){
 function maybeRename(file,toName,cb){
   fs.stat(file,function(err,stat){
     if(err && err.code !== 'ENOENT') return cb(err)
-    else if(err) cb(false) 
+    else if(err) return cb(false) 
     if(stat.size === 0) cb(false)
 
     // ok the file exists and there is data in it.

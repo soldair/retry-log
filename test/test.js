@@ -16,8 +16,30 @@ test("can",function(t){
     console.log(data)
     cb('error')
   },function(){
-    console.log('end')
-    t.end()
+    console.log('end1')
+    retry(name,function(data,cb){
+      console.log(data)
+      cb('error')
+    },function(data,cb){
+
+      console.log('end2')
+      retry(name,function(data,cb){
+        console.log(data)
+        cb('error')
+      },function(data,cb){
+
+        console.log('end3')
+        retry(name,function(data,cb){
+          console.log(data)
+          cb('error')
+        },function(data,cb){
+
+          console.log('end')
+          t.end()
+        })
+      })
+
+    })
   })
 
 
