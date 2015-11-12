@@ -10,7 +10,7 @@ var readmany = require('fs-readstream-many')
 
 module.exports = function(options,processFn,done){
   done = once(done)
-
+console.log('------------------__>')
   var jobKey = ts()
 
   options = options||{}
@@ -33,6 +33,8 @@ module.exports = function(options,processFn,done){
   var dir = path.dirname(sourceLog)
   var compactName = sourceLog+'.data_'+jobKey
 
+  var failedLog = path.resolve(dir,options.failedLog||path.join(dir,'failed.log')) 
+  var fixedLog = path.resolve(dir,options.failedLog||path.join(dir,'failed.log'))
 
   maybeRename(sourceLog,compactName,function(err,renamed){
     if(err) return done(err)
@@ -45,20 +47,21 @@ module.exports = function(options,processFn,done){
 
 
     // errLog
-    var failedStream = fs.createWriteStream('failed.log',{flags:'a+'})
+    var failedStream = fs.createWriteStream(failedLog,{flags:'a+'})
     // fixedLog
-    var fixedStream = fs.createWriteStream('fixed.log',{flags:'a+'})
+    var fixedStream = fs.createWriteStream(fixedLog,{flags:'a+'})
     // nextLog - this log gets renamed into place then all of the source files are deleted
     var nextLogName = sourceLog+'.tmp_'+jobKey;
     var nextLog = fs.createWriteStream(nextLogName)
 
     var doingWork = workStream(processFn,sourceLog+'.data_',boundWrite(failedStream),boundWrite(fixedStream),boundWrite(nextLog))
 
-    doingWork.maxAttempts = maxAttempts
+    doingWork.maxAttempts(maxAttempts)
 
     var processedFiles;
     doingWork.on('files',function(files){
       processedFiles = files
+      console.log('GOT FILES--------->',files)
     })
 
     doingWork.on('end',function(){
@@ -67,31 +70,38 @@ module.exports = function(options,processFn,done){
 
     eos(doingWork,function(err){
 
-      console.log('done doing work!')
+      console.log('done doing work! ',err)
 
       if(err || !nextLog.bytesWritten) {
-        return fs.unlink(nextLogName,function(){
-          done(err)
-        })
+        processedFiles.push(nextLogName)
+        return clean(err)
       }
 
       // make sure nextLog is picked up for work on the next iteration
-      fs.rename(nextLogName,compactName+'_result',function(err){
+      fs.rename(nextLogName,compactName+'_result',clean)
+
+      function clean(err) {
         if(err) return done(err)
 
+        console.log('-------------------___>',processedFiles)
         if(!processedFiles.length) return done()
 
         var cleanup = processedFiles.length
         var cleanupErrors = []
+
+
         while(processedFiles.length) fs.unlink(processedFiles.shift(),function(err){
           if(err) cleanupErrors.push(err)
           console.log('unlink cleanup! ',cleanup)
           if(!--cleanup) {
             if(cleanupErrors.length) err = new Error('failed to cleanup all files! going to be reprocessing forever!')
+            console.log('done cleanin!')
             done(err)
           }
-        })
-      })
+        })     
+      }
+  
+
     })
 
   })

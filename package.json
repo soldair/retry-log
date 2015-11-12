@@ -23,7 +23,7 @@
   "homepage": "https://github.com/soldair/retry-log#readme",
   "dependencies": {
     "end-of-stream": "^1.1.0",
-    "fs-readstream-many": "^1.0.1",
+    "fs-readstream-many": "^1.0.2",
     "monotonic-timestamp": "~0.0.9",
     "once": "^1.3.2",
     "split2": "^1.0.0",
