@@ -10,7 +10,6 @@ var readmany = require('fs-readstream-many')
 
 module.exports = function(options,processFn,done){
   done = once(done)
-console.log('------------------__>')
   var jobKey = ts()
 
   options = options||{}
@@ -61,16 +60,11 @@ console.log('------------------__>')
     var processedFiles;
     doingWork.on('files',function(files){
       processedFiles = files
-      console.log('GOT FILES--------->',files)
     })
 
-    doingWork.on('end',function(){
-      console.log('doingWork end event called!')
-    })
 
     eos(doingWork,function(err){
 
-      console.log('done doing work! ',err)
 
       if(err || !nextLog.bytesWritten) {
         processedFiles.push(nextLogName)
@@ -83,7 +77,6 @@ console.log('------------------__>')
       function clean(err) {
         if(err) return done(err)
 
-        console.log('-------------------___>',processedFiles)
         if(!processedFiles.length) return done()
 
         var cleanup = processedFiles.length
@@ -92,10 +85,8 @@ console.log('------------------__>')
 
         while(processedFiles.length) fs.unlink(processedFiles.shift(),function(err){
           if(err) cleanupErrors.push(err)
-          console.log('unlink cleanup! ',cleanup)
           if(!--cleanup) {
             if(cleanupErrors.length) err = new Error('failed to cleanup all files! going to be reprocessing forever!')
-            console.log('done cleanin!')
             done(err)
           }
         })     
@@ -123,24 +114,19 @@ function workStream(handler,prefix,errLog,fixedLog,nextLog){
     }
 
     handler(o,function(err,result){
-      console.log('handler callback')
       if(!o.tries) o.tries = 0 
 
       if(err) {
 
-        console.log("GOT ERROR IN HANDLER CALLBACK")
 
         if(!o.attempts) o.attempts = [];
         o.attempts[o.tries] = {err:err+'',result:result}
-        console.log('current tries! ',o.tries,maxAttempts)
 
         if(++o.tries >= maxAttempts) { 
-          console.log("putting in error log!")
           return errLog(o,function(err){
             cb(err)
           })
         } else {
-          console.log('putting in next log!')
           return nextLog(o,function(err){
             cb(err)
           })
@@ -163,12 +149,10 @@ function workStream(handler,prefix,errLog,fixedLog,nextLog){
   })
 
   eos(split,function(err){
-    console.log('split ended')
     if(err) through.emit('error',err)
   })
 
   eos(file,function(err){
-    console.log('files ended')
     if(err) through.emit('error',err)
   })
 
