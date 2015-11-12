@@ -1,6 +1,6 @@
 {
   "name": "retry-log",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "reprocess errors in a log so you dont have to stop real time processing to wait.",
   "main": "index.js",
   "scripts": {
