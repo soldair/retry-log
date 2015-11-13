@@ -1,6 +1,6 @@
 {
   "name": "retry-log",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Process events in a log. Retry them a number of times. Then file them into failed.log or fixed.log",
   "main": "index.js",
   "scripts": {
