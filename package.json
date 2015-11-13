@@ -1,7 +1,7 @@
 {
   "name": "retry-log",
   "version": "1.0.1",
-  "description": "reprocess errors in a log so you dont have to stop real time processing to wait.",
+  "description": "Process events in a log. Retry them a number of times. Then file them into failed.log or fixed.log",
   "main": "index.js",
   "scripts": {
     "test": "tape test/*.js"
