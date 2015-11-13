@@ -13,28 +13,30 @@ test("can",function(t){
   //
   
   retry(name,function(data,cb){
-    console.log(data)
-    cb('error')
+    console.log('1',data)
+    setImmediate(function(){
+      cb('error')
+    })
   },function(){
     console.log('end1')
     retry(name,function(data,cb){
-      console.log(data)
+      console.log('2',data)
       cb('error')
     },function(data,cb){
 
       console.log('end2')
       retry(name,function(data,cb){
-        console.log(data)
+        console.log('3',data)
         cb('error')
       },function(data,cb){
 
         console.log('end3')
         retry(name,function(data,cb){
-          console.log(data)
+          console.log('4',data)
           cb('error')
         },function(data,cb){
 
-          console.log('end')
+          console.log('end4')
           t.end()
         })
       })
