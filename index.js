@@ -175,7 +175,7 @@ function maybeRename (file, toName, cb) {
   fs.stat(file, function (err, stat) {
     if (err && err.code !== 'ENOENT') return cb(err)
     else if (err) return cb(false)
-    if (stat.size === 0) cb(false)
+    if (stat.size === 0) return cb(false)
 
     // ok the file exists and there is data in it.
 
