@@ -43,7 +43,17 @@ module.exports = function(options,processFn,done){
     //if(!renamed) return done(false)
 
     // tell any writing process to release the file.
-    if(pid) process.kill(pid,"SIGHUP")
+    if(pid) {
+      try{
+      process.kill(pid,"SIGHUP")
+      } catch(e){
+        if(e.code === 'ESRCH'){
+          console.log('follower pid does not exist.')
+        } else {
+          console.error('failed to signal follower ',e)
+        }
+      }
+    }
 
 
     // errLog
